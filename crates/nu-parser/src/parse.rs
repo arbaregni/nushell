@@ -10,7 +10,7 @@ use nu_protocol::hir::{
     Group, InternalCommand, Member, NamedArguments, Operator, Pipeline, RangeOperator,
     SpannedExpression, Synthetic, Unit,
 };
-use nu_protocol::{NamedType, PositionalType, Signature, SyntaxShape, UnspannedPathMember};
+use nu_protocol::{NamedType, PositionalType, Signature, SyntaxShape, UnspannedPathMember, ShellTypeName};
 use nu_source::{HasSpan, Span, Spanned, SpannedItem};
 use num_bigint::BigInt;
 
@@ -211,7 +211,7 @@ pub fn parse_full_column_path(
     }
 }
 
-/// Parse a numeric range
+/// Parse a numeric or string range
 fn parse_range(
     lite_arg: &Spanned<String>,
     scope: &dyn ParserScope,
@@ -238,9 +238,9 @@ fn parse_range(
         );
     }
 
-    let numbers: Vec<_> = lite_arg.item.split(operator_str).collect();
+    let elements: Vec<_> = lite_arg.item.split(operator_str).collect();
 
-    if numbers.len() != 2 {
+    if elements.len() != 2 {
         return (
             garbage(lite_arg.span),
             Some(ParseError::mismatch("range", lite_arg.clone())),
@@ -249,11 +249,11 @@ fn parse_range(
 
     let right_number_offset = operator_str.len();
 
-    let lhs = numbers[0].to_string().spanned(Span::new(
+    let lhs = elements[0].to_string().spanned(Span::new(
         lite_arg_span_start,
         lite_arg_span_start + dotdot_pos,
     ));
-    let rhs = numbers[1].to_string().spanned(Span::new(
+    let rhs = elements[1].to_string().spanned(Span::new(
         lite_arg_span_start + dotdot_pos + right_number_offset,
         lite_arg_span_start + lite_arg_len,
     ));
@@ -265,6 +265,8 @@ fn parse_range(
         None
     } else if let (left, None) = parse_arg(SyntaxShape::Number, scope, &lhs) {
         Some(left)
+    } else if let (left, None) = parse_arg(SyntaxShape::String, scope, &lhs) {
+        Some(left)
     } else {
         return (
             garbage(lite_arg.span),
@@ -275,6 +277,8 @@ fn parse_range(
     let right = if right_hand_open {
         None
     } else if let (right, None) = parse_arg(SyntaxShape::Number, scope, &rhs) {
+        Some(right)
+    } else if let (right, None) = parse_arg(SyntaxShape::String, scope, &rhs) {
         Some(right)
     } else {
         return (

@@ -128,6 +128,10 @@ impl Iterator for RangeIterator {
                     UntaggedValue::Primitive(Primitive::Int(x)),
                     UntaggedValue::Primitive(Primitive::Decimal(y)),
                 ) => (BigDecimal::from(*x)).cmp(y),
+                (
+                    UntaggedValue::Primitive(Primitive::String(x)),
+                    UntaggedValue::Primitive(Primitive::String(y)),
+                ) => x.cmp(&y),
                 _ => {
                     self.done = true;
                     return Some(
